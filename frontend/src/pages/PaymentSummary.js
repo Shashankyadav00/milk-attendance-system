@@ -35,6 +35,7 @@ function PaymentSummary() {
     if (!userId) return;
     loadCustomers();
     loadPayments();
+    loadReminderSettings();
   }, [shift, userId]);
 
   /* ---------------- LOAD DATA ---------------- */
@@ -59,6 +60,23 @@ function PaymentSummary() {
       else setPayments([]);
     } catch {
       setPayments([]);
+    }
+  };
+
+  /* ---------------- LOAD REMINDER (FIXED BUG) ---------------- */
+
+  const loadReminderSettings = async () => {
+    try {
+      const res = await api.get("/api/customers/reminder", {
+        params: { userId, shift },
+      });
+
+      if (res.data?.enabled !== undefined) {
+        setEnabled(res.data.enabled);
+        setTime(res.data.time || "08:00");
+      }
+    } catch {
+      // silent fail
     }
   };
 
@@ -93,7 +111,7 @@ function PaymentSummary() {
     loadPayments();
   };
 
-  /* ---------------- REMINDER SAVE ---------------- */
+  /* ---------------- SAVE REMINDER ---------------- */
 
   const saveReminder = async () => {
     setSaving(true);
@@ -104,13 +122,24 @@ function PaymentSummary() {
         enabled,
         time,
       });
-
       alert("Reminder saved successfully");
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("Failed to save reminder");
     } finally {
       setSaving(false);
+    }
+  };
+
+  /* ---------------- ADMIN EMAIL ---------------- */
+
+  const sendUnpaidEmail = async () => {
+    try {
+      await api.post("/api/payments/email/unpaid", null, {
+        params: { shift, userId },
+      });
+      alert("Unpaid customers email sent to admin");
+    } catch {
+      alert("Failed to send unpaid report");
     }
   };
 
@@ -135,14 +164,14 @@ function PaymentSummary() {
           </Button>
 
           <Typography variant="h6" fontWeight={700}>
-            💰 Payment Summary ({shift})
+            Payment Summary ({shift})
           </Typography>
         </Stack>
 
         {/* REMINDER */}
         <Box mt={3} p={2} sx={{ background: "#f1f5f9", borderRadius: 2 }}>
           <Typography fontWeight={700} mb={1}>
-            ⏰ Email Reminder
+            Email Reminder
           </Typography>
 
           <Divider sx={{ mb: 1 }} />
@@ -152,6 +181,7 @@ function PaymentSummary() {
               <Typography>{shift} Shift</Typography>
               <Switch
                 checked={enabled}
+                disabled={saving}
                 onChange={(e) => setEnabled(e.target.checked)}
               />
             </Stack>
@@ -223,6 +253,17 @@ function PaymentSummary() {
               </TableBody>
             </Table>
           </Paper>
+        </Box>
+
+        {/* ADMIN EMAIL */}
+        <Box mt={3} textAlign="right">
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={sendUnpaidEmail}
+          >
+            Send Unpaid Report to Admin
+          </Button>
         </Box>
       </Card>
     </Box>

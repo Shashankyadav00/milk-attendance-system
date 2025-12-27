@@ -5,12 +5,9 @@ import com.milkattendence.backend.model.Payment;
 import com.milkattendence.backend.repository.CustomerRepository;
 import com.milkattendence.backend.repository.MilkEntryRepository;
 import com.milkattendence.backend.repository.PaymentRepository;
+import com.milkattendence.backend.service.EmailService;
 
-import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,29 +26,19 @@ public class PaymentController {
     private final PaymentRepository paymentRepository;
     private final CustomerRepository customerRepository;
     private final MilkEntryRepository milkEntryRepository;
-
-    private JavaMailSender mailSender;
-
-    @Value("${app.reminder.email}")
-    private String reminderEmail;
-
-    @Value("${spring.mail.username}")
-    private String senderEmail;
+    private final EmailService emailService;
 
     @Autowired
     public PaymentController(
             PaymentRepository paymentRepository,
             CustomerRepository customerRepository,
-            MilkEntryRepository milkEntryRepository
+            MilkEntryRepository milkEntryRepository,
+            EmailService emailService
     ) {
         this.paymentRepository = paymentRepository;
         this.customerRepository = customerRepository;
         this.milkEntryRepository = milkEntryRepository;
-    }
-
-    @Autowired
-    public void setMailSender(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
+        this.emailService = emailService;
     }
 
     /* ============================
@@ -78,12 +65,7 @@ public class PaymentController {
                         .findAllMatchingForUser(shift, today, name, userId)
                         .isEmpty()) {
 
-                    Payment p = new Payment();
-                    p.setCustomerName(name);
-                    p.setShift(shift);
-                    p.setPaid(false);
-                    p.setDate(today);
-                    p.setUserId(userId);
+                    Payment p = new Payment(name, shift, false, today, userId);
                     paymentRepository.save(p);
                 }
             }
@@ -165,7 +147,7 @@ public class PaymentController {
     }
 
     /* ============================
-       REMINDER CHECK (UPTIME CALLS THIS)
+       REMINDER CHECK
        ============================ */
     @GetMapping("/check-reminders")
     public void checkReminders() {
@@ -183,16 +165,16 @@ public class PaymentController {
             if (now.getHour() == u.getReminderTime().getHour()
                     && now.getMinute() == u.getReminderTime().getMinute()) {
 
-                sendShiftEmail(u.getUserId(), u.getReminderShift());
+                sendUnpaidEmailInternal(u.getUserId(), u.getReminderShift());
                 customerRepository.updateLastReminderSent(u.getUserId(), today);
             }
         }
     }
 
     /* ============================
-       EMAIL SENDER
+       SENDGRID EMAIL
        ============================ */
-    private void sendShiftEmail(Long userId, String shift) {
+    private void sendUnpaidEmailInternal(Long userId, String shift) {
 
         try {
             LocalDate today = LocalDate.now(IST);
@@ -203,13 +185,6 @@ public class PaymentController {
                     );
 
             if (unpaid.isEmpty()) return;
-
-            MimeMessage msg = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(msg, true);
-
-            helper.setFrom(senderEmail);
-            helper.setTo(reminderEmail);
-            helper.setSubject("Unpaid Customers (" + shift + ") - " + today);
 
             StringBuilder html = new StringBuilder();
             html.append("<h3>Unpaid Customers — ").append(shift).append("</h3>");
@@ -246,11 +221,26 @@ public class PaymentController {
             }
 
             html.append("</table>");
-            helper.setText(html.toString(), true);
-            mailSender.send(msg);
+
+            emailService.sendHtmlEmail(
+                    "Unpaid Customers (" + shift + ") - " + today,
+                    html.toString()
+            );
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /* ============================
+       MANUAL EMAIL TRIGGER
+       ============================ */
+    @PostMapping("/email/unpaid")
+    public String sendUnpaidEmail(
+            @RequestParam String shift,
+            @RequestParam Long userId
+    ) {
+        sendUnpaidEmailInternal(userId, shift);
+        return "Email sent to admin";
     }
 }

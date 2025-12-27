@@ -2,12 +2,9 @@ package com.milkattendence.backend.controller;
 
 import com.milkattendence.backend.model.User;
 import com.milkattendence.backend.repository.UserRepository;
+import com.milkattendence.backend.service.EmailService;
 
-import jakarta.mail.internet.MimeMessage;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
-
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -20,18 +17,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AuthController {
 
     private final UserRepository userRepository;
-    private final JavaMailSender mailSender;
+    private final EmailService emailService;
 
-    @Value("${spring.mail.username}")
-    private String senderEmail;
-
-    public AuthController(UserRepository userRepository, JavaMailSender mailSender) {
+    @Autowired
+    public AuthController(UserRepository userRepository, EmailService emailService) {
         this.userRepository = userRepository;
-        this.mailSender = mailSender;
+        this.emailService = emailService;
     }
 
     // ==========================================================
-    // 🔵 LOGIN — now returns userId
+    // 🔵 LOGIN — returns userId
     // ==========================================================
     @PostMapping("/login")
     public Map<String, Object> login(@RequestBody User requestUser) {
@@ -40,8 +35,8 @@ public class AuthController {
 
         if (foundOpt.isEmpty()) {
             return Map.of(
-                "success", false,
-                "message", "User not found. Please register."
+                    "success", false,
+                    "message", "User not found. Please register."
             );
         }
 
@@ -49,16 +44,15 @@ public class AuthController {
 
         if (!found.getPassword().equals(requestUser.getPassword())) {
             return Map.of(
-                "success", false,
-                "message", "Invalid password."
+                    "success", false,
+                    "message", "Invalid password."
             );
         }
 
-        // 🔥 RETURN USER ID HERE
         return Map.of(
-            "success", true,
-            "message", "Login successful!",
-            "userId", found.getId()
+                "success", true,
+                "message", "Login successful!",
+                "userId", found.getId()
         );
     }
 
@@ -70,21 +64,21 @@ public class AuthController {
 
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             return Map.of(
-                "success", false,
-                "message", "User already exists."
+                    "success", false,
+                    "message", "User already exists."
             );
         }
 
         userRepository.save(user);
 
         return Map.of(
-            "success", true,
-            "message", "Registration successful!"
+                "success", true,
+                "message", "Registration successful!"
         );
     }
 
     // ==========================================================
-    // 🟣 FORGOT PASSWORD — SEND OTP
+    // 🟣 FORGOT PASSWORD — SEND OTP (SendGrid)
     // ==========================================================
 
     private static class OtpInfo {
@@ -111,35 +105,24 @@ public class AuthController {
 
         try {
             String otp = String.valueOf(new Random().nextInt(900000) + 100000);
-
             otpStore.put(email, new OtpInfo(otp, LocalDateTime.now().plusMinutes(10)));
 
-            sendOtpEmail(email, otp);
+            String html =
+                    "<h3>Password Reset OTP</h3>" +
+                    "<h1 style='color:#2563eb'>" + otp + "</h1>" +
+                    "<p>This OTP is valid for <b>10 minutes</b>.</p>";
+
+            emailService.sendHtmlEmail(
+                    "Password Reset OTP",
+                    html
+            );
 
             return Map.of("success", true, "message", "OTP sent to email");
 
         } catch (Exception e) {
             e.printStackTrace();
-            return Map.of("success", false, "error", "Failed to send email");
+            return Map.of("success", false, "error", "Failed to send OTP");
         }
-    }
-
-    private void sendOtpEmail(String email, String otp) throws Exception {
-
-        MimeMessage msg = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(msg, true, "UTF-8");
-
-        helper.setFrom(senderEmail);
-        helper.setTo(email);
-        helper.setSubject("Your OTP for Password Reset");
-
-        String html =
-                "<h3>Your OTP for resetting your password:</h3>" +
-                "<h1 style='color:blue;'>" + otp + "</h1>" +
-                "<p>This OTP is valid for <b>10 minutes</b>.</p>";
-
-        helper.setText(html, true);
-        mailSender.send(msg);
     }
 
     // ==========================================================
