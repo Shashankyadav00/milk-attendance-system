@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -100,5 +101,27 @@ public class CustomerController {
         
         // NOTE: If you need to physically delete, uncomment the line below and remove the two above:
         // customerRepository.deleteById(id);
+    }
+
+    // ==========================================================
+    // 🔔 REMINDER SETTINGS — READ
+    // GET /api/customers/reminder?userId=..&shift=..
+    // Returns: { enabled: boolean, time: "HH:mm" }
+    // ==========================================================
+    @GetMapping("/reminder")
+    public Map<String, Object> getReminderSettings(
+            @RequestParam Long userId,
+            @RequestParam String shift
+    ) {
+        List<Customer> list = customerRepository.findByShiftAndUserId(shift, userId);
+        if (list.isEmpty()) {
+            return Map.of("enabled", false, "time", "08:00");
+        }
+
+        Customer c = list.get(0);
+        boolean enabled = Boolean.TRUE.equals(c.getReminderEnabled());
+        String time = c.getReminderTime() != null ? c.getReminderTime().toString() : "08:00";
+
+        return Map.of("enabled", enabled, "time", time);
     }
 }
