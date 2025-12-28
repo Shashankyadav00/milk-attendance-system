@@ -7,6 +7,7 @@ To run this backend on Render, set the following environment variables in your R
 - `DB_PASSWORD` — (optional) DB password if not included in `DATABASE_URL`.
 - `SENDGRID_API_KEY` — SendGrid API key for email features.
 - `ADMIN_EMAIL` — recipient address used by the email service.
+- `EMAIL_FROM` — (recommended) the sender address used for outgoing emails (e.g., `noreply@yourdomain.com`). **This must be a verified sender identity in your SendGrid account**; otherwise SendGrid will reject the messages.
 - `FRONTEND_URL` — (recommended) the origin of your frontend app, e.g. `https://milk-attendance-frontend.onrender.com`. If set, the backend will allow CORS requests from this origin in addition to `http://localhost:3000`.
 - `PORT` — optional; defaults to 8080.
 

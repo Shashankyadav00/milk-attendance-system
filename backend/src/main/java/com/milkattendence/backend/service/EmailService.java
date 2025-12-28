@@ -24,6 +24,9 @@ public class EmailService {
     @Value("${SENDGRID_API_KEY:}")
     private String sendgridApiKey;
 
+    @Value("${EMAIL_FROM:}")
+    private String emailFrom;
+
     public void sendHtmlEmail(String subject, String htmlContent) throws Exception {
 
         String apiKey = sendgridApiKey != null && !sendgridApiKey.isBlank()
@@ -42,7 +45,8 @@ public class EmailService {
 
         logger.info("Sending email to {} with subject={}", adminEmail, subject);
 
-        Email from = new Email("noreply@milk-attendance.com");
+        String fromAddress = (emailFrom != null && !emailFrom.isBlank()) ? emailFrom : "noreply@milk-attendance.com";
+        Email from = new Email(fromAddress);
         Email to = new Email(adminEmail);
         Content content = new Content("text/html", htmlContent);
         Mail mail = new Mail(from, subject, to, content);
@@ -64,10 +68,13 @@ public class EmailService {
     public java.util.Map<String, Object> getHealthStatus() {
         boolean sendgridPresent = (sendgridApiKey != null && !sendgridApiKey.isBlank()) || (System.getenv("SENDGRID_API_KEY") != null && !System.getenv("SENDGRID_API_KEY").isBlank());
         boolean adminPresent = adminEmail != null && !adminEmail.isBlank();
+        boolean fromPresent = emailFrom != null && !emailFrom.isBlank();
         return java.util.Map.of(
                 "sendgridConfigured", sendgridPresent,
                 "adminEmailConfigured", adminPresent,
-                "adminEmail", adminPresent ? adminEmail : ""
+                "adminEmail", adminPresent ? adminEmail : "",
+                "emailFromConfigured", fromPresent,
+                "emailFrom", fromPresent ? emailFrom : "noreply@milk-attendance.com"
         );
     }
 }
