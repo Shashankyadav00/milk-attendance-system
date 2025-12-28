@@ -8,6 +8,8 @@ To run this backend on Render, set the following environment variables in your R
 - `SENDGRID_API_KEY` — SendGrid API key for email features.
 - `ADMIN_EMAIL` — recipient address used by the email service.
 - `EMAIL_FROM` — (recommended) the sender address used for outgoing emails (e.g., `noreply@yourdomain.com`). **This must be a verified sender identity in your SendGrid account**; otherwise SendGrid will reject the messages.
+
+Reminders: The app supports automated email reminders. On the Payments page you can enable a reminder, choose the time (HH:mm) and specify "Repeat every (days)" — e.g., `1` for daily, `2` for every second day. Reminders are evaluated every minute and sent automatically at the configured time and interval.
 - `FRONTEND_URL` — (recommended) the origin of your frontend app, e.g. `https://milk-attendance-frontend.onrender.com`. If set, the backend will allow CORS requests from this origin in addition to `http://localhost:3000`.
 - `PORT` — optional; defaults to 8080.
 
