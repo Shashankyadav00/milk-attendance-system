@@ -138,8 +138,20 @@ function PaymentSummary() {
         params: { shift, userId },
       });
       alert("Unpaid customers email sent to admin");
-    } catch {
-      alert("Failed to send unpaid report");
+    } catch (err) {
+      const message = err?.response?.data?.error || "Failed to send unpaid report";
+      alert(message);
+    }
+  };
+
+  const sendTestEmail = async () => {
+    try {
+      const res = await api.post("/api/payments/email/test");
+      if (res.data?.success) alert("Test email sent successfully");
+      else alert(res.data?.error || "Test email failed");
+    } catch (err) {
+      const message = err?.response?.data?.error || err.message || "Test email failed";
+      alert(message);
     }
   };
 
@@ -263,6 +275,14 @@ function PaymentSummary() {
             onClick={sendUnpaidEmail}
           >
             Send Unpaid Report to Admin
+          </Button>
+
+          <Button
+            variant="outlined"
+            sx={{ ml: 1 }}
+            onClick={sendTestEmail}
+          >
+            Send Test Email
           </Button>
         </Box>
       </Card>

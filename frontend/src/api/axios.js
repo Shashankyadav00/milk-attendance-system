@@ -1,5 +1,9 @@
 import axios from "axios";
 
+if (!process.env.REACT_APP_API_BASE_URL) {
+  console.warn("REACT_APP_API_BASE_URL is not set. The frontend will call relative API paths which may cause 404s if the backend is on a different host.");
+}
+
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_BASE_URL,
   headers: {
