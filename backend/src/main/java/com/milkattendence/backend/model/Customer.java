@@ -31,6 +31,9 @@ public class Customer {
 
     private String reminderShift;
 
+    // How often (in days) reminders should repeat. Default is 1 (daily).
+    private Integer reminderIntervalDays = 1;
+
     private LocalDate lastReminderSent;
 
     // ==========================
@@ -122,6 +125,14 @@ public class Customer {
 
     public void setReminderShift(String reminderShift) {
         this.reminderShift = reminderShift;
+    }
+
+    public Integer getReminderIntervalDays() {
+        return reminderIntervalDays;
+    }
+
+    public void setReminderIntervalDays(Integer reminderIntervalDays) {
+        this.reminderIntervalDays = reminderIntervalDays;
     }
 
     public LocalDate getLastReminderSent() {

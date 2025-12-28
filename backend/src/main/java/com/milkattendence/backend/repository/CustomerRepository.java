@@ -50,14 +50,16 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
         UPDATE Customer c
         SET c.reminderEnabled = :enabled,
             c.reminderTime = :time,
-            c.reminderShift = :shift
+            c.reminderShift = :shift,
+            c.reminderIntervalDays = :intervalDays
         WHERE c.userId = :userId
     """)
     void updateReminderSettings(
             @Param("userId") Long userId,
             @Param("enabled") boolean enabled,
             @Param("time") LocalTime time,
-            @Param("shift") String shift
+            @Param("shift") String shift,
+            @Param("intervalDays") Integer intervalDays
     );
 
     @Query("""

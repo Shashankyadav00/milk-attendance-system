@@ -138,11 +138,18 @@ public class PaymentController {
         String time = Objects.toString(body.get("time"), "21:00");
         boolean enabled = Boolean.parseBoolean("" + body.get("enabled"));
 
+        Integer repeatDays = 1;
+        try {
+            repeatDays = Integer.parseInt(Objects.toString(body.getOrDefault("repeatDays", "1")));
+        } catch (Exception ignored) {}
+        if (repeatDays == null || repeatDays <= 0) repeatDays = 1;
+
         customerRepository.updateReminderSettings(
                 userId,
                 enabled,
                 LocalTime.parse(time),
-                shift
+                shift,
+                repeatDays
         );
 
         return Map.of("success", true);
@@ -152,6 +159,7 @@ public class PaymentController {
        REMINDER CHECK
        ============================ */
     @GetMapping("/check-reminders")
+    @org.springframework.scheduling.annotation.Scheduled(cron = "0 * * * * *") // run at the top of every minute
     public void checkReminders() {
 
         LocalTime now = LocalTime.now(IST);
@@ -162,7 +170,18 @@ public class PaymentController {
         for (Customer u : users) {
 
             if (u.getReminderTime() == null) continue;
-            if (today.equals(u.getLastReminderSent())) continue;
+
+            int interval = (u.getReminderIntervalDays() == null || u.getReminderIntervalDays() <= 0) ? 1 : u.getReminderIntervalDays();
+
+            boolean eligibleByDate = false;
+            if (u.getLastReminderSent() == null) {
+                eligibleByDate = true;
+            } else {
+                LocalDate next = u.getLastReminderSent().plusDays(interval);
+                if (!today.isBefore(next)) eligibleByDate = true;
+            }
+
+            if (!eligibleByDate) continue;
 
             if (now.getHour() == u.getReminderTime().getHour()
                     && now.getMinute() == u.getReminderTime().getMinute()) {
@@ -250,17 +269,5 @@ public class PaymentController {
         }
     }
 
-    /* ============================
-       TEST EMAIL ENDPOINT (MANUAL)
-       ============================ */
-    @PostMapping("/email/test")
-    public Map<String, Object> sendTestEmail() {
-        try {
-            emailService.sendHtmlEmail("Test Email from Milk Attendance", "<p>This is a test email.</p>");
-            return Map.of("success", true);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Map.of("success", false, "error", e.getMessage());
-        }
-    }
+
 }

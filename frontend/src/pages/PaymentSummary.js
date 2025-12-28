@@ -29,6 +29,7 @@ function PaymentSummary() {
 
   const [time, setTime] = useState("08:00");
   const [enabled, setEnabled] = useState(false);
+  const [repeatDays, setRepeatDays] = useState(1);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -74,6 +75,7 @@ function PaymentSummary() {
       if (res.data?.enabled !== undefined) {
         setEnabled(res.data.enabled);
         setTime(res.data.time || "08:00");
+        setRepeatDays(res.data.repeatDays || 1);
       }
     } catch {
       // silent fail
@@ -121,6 +123,7 @@ function PaymentSummary() {
         shift,
         enabled,
         time,
+        repeatDays,
       });
       alert("Reminder saved successfully");
     } catch {
@@ -144,16 +147,7 @@ function PaymentSummary() {
     }
   };
 
-  const sendTestEmail = async () => {
-    try {
-      const res = await api.post("/api/payments/email/test");
-      if (res.data?.success) alert("Test email sent successfully");
-      else alert(res.data?.error || "Test email failed");
-    } catch (err) {
-      const message = err?.response?.data?.error || err.message || "Test email failed";
-      alert(message);
-    }
-  };
+
 
   return (
     <Box
@@ -207,6 +201,16 @@ function PaymentSummary() {
                   label="Time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
+                />
+
+                <TextField
+                  type="number"
+                  size="small"
+                  sx={{ width: 160 }}
+                  inputProps={{ min: 1 }}
+                  label="Repeat every (days)"
+                  value={repeatDays}
+                  onChange={(e) => setRepeatDays(Number(e.target.value) || 1)}
                 />
 
                 <Button
@@ -277,13 +281,7 @@ function PaymentSummary() {
             Send Unpaid Report to Admin
           </Button>
 
-          <Button
-            variant="outlined"
-            sx={{ ml: 1 }}
-            onClick={sendTestEmail}
-          >
-            Send Test Email
-          </Button>
+
         </Box>
       </Card>
     </Box>

@@ -121,7 +121,8 @@ public class CustomerController {
         Customer c = list.get(0);
         boolean enabled = Boolean.TRUE.equals(c.getReminderEnabled());
         String time = c.getReminderTime() != null ? c.getReminderTime().toString() : "08:00";
+        Integer repeatDays = c.getReminderIntervalDays() != null ? c.getReminderIntervalDays() : 1;
 
-        return Map.of("enabled", enabled, "time", time);
+        return Map.of("enabled", enabled, "time", time, "repeatDays", repeatDays);
     }
 }

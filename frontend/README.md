@@ -72,5 +72,5 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 ## Deployment notes 🔧
 
 - Set `REACT_APP_API_BASE_URL` in your hosting environment to your backend base URL (for example `https://your-backend.example.com`). If this is not set, the frontend will use relative API paths and may receive 404s when requests are served by the frontend host.
-- The Payments page includes a **Send Test Email** button (near the Unpaid Report button) that triggers the backend test email endpoint (`POST /api/payments/email/test`). Use this to verify SendGrid configuration after you set `EMAIL_FROM` and `SENDGRID_API_KEY` in the backend environment.  
+- Reminder emails must be configured with `EMAIL_FROM` and `SENDGRID_API_KEY` on the backend. Reminder emails are sent automatically at the configured time and repeat interval (set in the Payments page).  
 - If you change `REACT_APP_API_BASE_URL`, rebuild the frontend (run `npm run build`) so the variable is baked into the production bundle.
