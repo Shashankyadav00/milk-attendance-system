@@ -10,6 +10,8 @@ import com.milkattendence.backend.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -165,8 +167,13 @@ public class PaymentController {
             if (now.getHour() == u.getReminderTime().getHour()
                     && now.getMinute() == u.getReminderTime().getMinute()) {
 
-                sendUnpaidEmailInternal(u.getUserId(), u.getReminderShift());
-                customerRepository.updateLastReminderSent(u.getUserId(), today);
+                try {
+                    sendUnpaidEmailInternal(u.getUserId(), u.getReminderShift());
+                    customerRepository.updateLastReminderSent(u.getUserId(), today);
+                } catch (Exception e) {
+                    // Log and continue; do not stop the loop
+                    LoggerFactory.getLogger(PaymentController.class).error("Failed to send reminder email for user {}: {}", u.getUserId(), e.getMessage());
+                }
             }
         }
     }
@@ -174,9 +181,7 @@ public class PaymentController {
     /* ============================
        SENDGRID EMAIL
        ============================ */
-    private void sendUnpaidEmailInternal(Long userId, String shift) {
-
-        try {
+    private void sendUnpaidEmailInternal(Long userId, String shift) throws Exception {
             LocalDate today = LocalDate.now(IST);
 
             List<Payment> unpaid =
@@ -226,21 +231,36 @@ public class PaymentController {
                     "Unpaid Customers (" + shift + ") - " + today,
                     html.toString()
             );
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     /* ============================
        MANUAL EMAIL TRIGGER
        ============================ */
     @PostMapping("/email/unpaid")
-    public String sendUnpaidEmail(
+    public Map<String, Object> sendUnpaidEmail(
             @RequestParam String shift,
             @RequestParam Long userId
     ) {
-        sendUnpaidEmailInternal(userId, shift);
-        return "Email sent to admin";
+        try {
+            sendUnpaidEmailInternal(userId, shift);
+            return Map.of("success", true, "message", "Email sent to admin");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Map.of("success", false, "error", e.getMessage());
+        }
+    }
+
+    /* ============================
+       TEST EMAIL ENDPOINT (MANUAL)
+       ============================ */
+    @PostMapping("/email/test")
+    public Map<String, Object> sendTestEmail() {
+        try {
+            emailService.sendHtmlEmail("Test Email from Milk Attendance", "<p>This is a test email.</p>");
+            return Map.of("success", true);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Map.of("success", false, "error", e.getMessage());
+        }
     }
 }

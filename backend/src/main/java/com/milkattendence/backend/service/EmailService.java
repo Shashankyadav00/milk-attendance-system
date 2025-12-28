@@ -10,20 +10,37 @@ import com.sendgrid.helpers.mail.objects.Content;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class EmailService {
 
-    @Value("${admin.email}")
+    private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+
+    @Value("${admin.email:}")
     private String adminEmail;
+
+    @Value("${SENDGRID_API_KEY:}")
+    private String sendgridApiKey;
 
     public void sendHtmlEmail(String subject, String htmlContent) throws Exception {
 
-        String apiKey = System.getenv("SENDGRID_API_KEY");
+        String apiKey = sendgridApiKey != null && !sendgridApiKey.isBlank()
+                ? sendgridApiKey
+                : System.getenv("SENDGRID_API_KEY");
 
         if (apiKey == null || apiKey.isBlank()) {
+            logger.error("SENDGRID_API_KEY is missing");
             throw new IllegalStateException("SENDGRID_API_KEY is missing");
         }
+
+        if (adminEmail == null || adminEmail.isBlank()) {
+            logger.error("admin.email (ADMIN_EMAIL) is missing");
+            throw new IllegalStateException("admin.email (ADMIN_EMAIL) is missing");
+        }
+
+        logger.info("Sending email to {} with subject={}", adminEmail, subject);
 
         Email from = new Email("noreply@milk-attendance.com");
         Email to = new Email(adminEmail);
@@ -36,6 +53,11 @@ public class EmailService {
         request.setEndpoint("mail/send");
         request.setBody(mail.build());
 
-        sg.api(request);
+        com.sendgrid.Response response = sg.api(request);
+        logger.info("SendGrid response: status={}, body={}", response.getStatusCode(), response.getBody());
+
+        if (response.getStatusCode() >= 400) {
+            throw new RuntimeException("Failed to send email: " + response.getStatusCode() + " " + response.getBody());
+        }
     }
 }
