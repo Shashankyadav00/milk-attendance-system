@@ -19,13 +19,18 @@ public class EmailService {
 
     public void sendHtmlEmail(String subject, String htmlContent) throws Exception {
 
+        String apiKey = System.getenv("SENDGRID_API_KEY");
+
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("SENDGRID_API_KEY is missing");
+        }
+
         Email from = new Email("noreply@milk-attendance.com");
         Email to = new Email(adminEmail);
         Content content = new Content("text/html", htmlContent);
-
         Mail mail = new Mail(from, subject, to, content);
 
-        SendGrid sg = new SendGrid(System.getenv("SENDGRID_API_KEY"));
+        SendGrid sg = new SendGrid(apiKey);
         Request request = new Request();
         request.setMethod(Method.POST);
         request.setEndpoint("mail/send");
