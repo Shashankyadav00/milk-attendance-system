@@ -60,4 +60,14 @@ public class EmailService {
             throw new RuntimeException("Failed to send email: " + response.getStatusCode() + " " + response.getBody());
         }
     }
+
+    public java.util.Map<String, Object> getHealthStatus() {
+        boolean sendgridPresent = (sendgridApiKey != null && !sendgridApiKey.isBlank()) || (System.getenv("SENDGRID_API_KEY") != null && !System.getenv("SENDGRID_API_KEY").isBlank());
+        boolean adminPresent = adminEmail != null && !adminEmail.isBlank();
+        return java.util.Map.of(
+                "sendgridConfigured", sendgridPresent,
+                "adminEmailConfigured", adminPresent,
+                "adminEmail", adminPresent ? adminEmail : ""
+        );
+    }
 }
