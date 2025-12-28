@@ -24,44 +24,40 @@
 
     <dependencies>
 
-        <!-- =========================
-             WEB / REST API
-        ========================== -->
+        <!-- WEB / REST -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- =========================
-             JPA / HIBERNATE
-        ========================== -->
+        <!-- JPA / HIBERNATE -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!-- =========================
-             POSTGRESQL
-        ========================== -->
+        <!-- POSTGRESQL -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
 
-        <!-- =========================
-             SENDGRID (EMAIL VIA API)
-             ❌ NO SMTP
-        ========================== -->
+        <!-- H2 IN-MEMORY DATABASE FOR TESTS -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- SENDGRID (API BASED EMAIL, NO SMTP) -->
         <dependency>
             <groupId>com.sendgrid</groupId>
             <artifactId>sendgrid-java</artifactId>
             <version>4.9.3</version>
         </dependency>
 
-        <!-- =========================
-             DEV TOOLS
-        ========================== -->
+        <!-- DEVTOOLS -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
@@ -69,9 +65,7 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- =========================
-             TESTING
-        ========================== -->
+        <!-- TESTING -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
