@@ -145,6 +145,8 @@ public class PaymentController {
         } catch (Exception ignored) {}
         if (repeatDays == null || repeatDays <= 0) repeatDays = 1;
 
+        logger.info("Saving reminder settings: user={}, shift={}, enabled={}, time={}, repeatDays={}", userId, shift, enabled, time, repeatDays);
+
         customerRepository.updateReminderSettings(
                 userId,
                 enabled,
@@ -152,6 +154,13 @@ public class PaymentController {
                 shift,
                 repeatDays
         );
+
+        // If the reminder is being enabled (or re-saved), clear lastReminderSent for this shift
+        // so that a newly chosen time can trigger an email immediately (if applicable)
+        if (enabled) {
+            customerRepository.clearLastReminderSentForShift(userId, shift);
+            logger.info("Cleared lastReminderSent for user={} shift={} to allow immediate send", userId, shift);
+        }
 
         return Map.of("success", true);
     }

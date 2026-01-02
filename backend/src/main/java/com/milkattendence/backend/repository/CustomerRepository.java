@@ -93,4 +93,16 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
             @Param("shift") String shift,
             @Param("date") LocalDate date
     );
+
+    @Modifying
+    @Transactional
+    @Query("""
+        UPDATE Customer c
+        SET c.lastReminderSent = NULL
+        WHERE c.userId = :userId AND c.reminderShift = :shift
+    """)
+    void clearLastReminderSentForShift(
+            @Param("userId") Long userId,
+            @Param("shift") String shift
+    );
 }
