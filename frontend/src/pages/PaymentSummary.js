@@ -133,14 +133,36 @@ function PaymentSummary() {
   const saveReminder = async () => {
     setSaving(true);
     try {
-      await api.post("/api/payments/save-reminder", {
+      const res = await api.post("/api/payments/save-reminder", {
         userId,
         shift,
         enabled,
         time,
         repeatDays,
       });
-      alert("Reminder saved successfully");
+
+      if (res.data?.success) {
+        alert("Reminder saved successfully");
+
+        // If reminder enabled, trigger the unpaid report immediately
+        if (enabled) {
+          try {
+            const trigger = await api.post("/api/payments/trigger-reminder", null, { params: { userId, shift } });
+            if (trigger.data?.success) {
+              alert("Unpaid report sent to admin");
+              await loadNotifications();
+            } else {
+              alert(trigger.data?.error || "Failed to send unpaid report automatically");
+            }
+          } catch (err) {
+            const message = err?.response?.data?.error || "Failed to send unpaid report automatically";
+            alert(message);
+          }
+        }
+
+      } else {
+        alert("Failed to save reminder");
+      }
     } catch {
       alert("Failed to save reminder");
     } finally {
