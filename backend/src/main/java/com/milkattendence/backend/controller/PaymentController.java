@@ -167,9 +167,15 @@ public class PaymentController {
 
         List<Customer> users = customerRepository.findAllWithRemindersEnabled();
 
+        // Ensure we only send one reminder per (userId, shift) in a single run
+        java.util.Set<String> processed = new java.util.HashSet<>();
+
         for (Customer u : users) {
 
             if (u.getReminderTime() == null) continue;
+
+            String userShiftKey = u.getUserId() + ":" + (u.getReminderShift() == null ? "Morning" : u.getReminderShift());
+            if (processed.contains(userShiftKey)) continue; // already processed this user's shift
 
             int interval = (u.getReminderIntervalDays() == null || u.getReminderIntervalDays() <= 0) ? 1 : u.getReminderIntervalDays();
 
@@ -189,6 +195,7 @@ public class PaymentController {
                 try {
                     sendUnpaidEmailInternal(u.getUserId(), u.getReminderShift());
                     customerRepository.updateLastReminderSent(u.getUserId(), today);
+                    processed.add(userShiftKey);
                 } catch (Exception e) {
                     // Log and continue; do not stop the loop
                     LoggerFactory.getLogger(PaymentController.class).error("Failed to send reminder email for user {}: {}", u.getUserId(), e.getMessage());
