@@ -221,6 +221,24 @@ function PaymentSummary() {
                 >
                   Save
                 </Button>
+
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  disabled={saving}
+                  onClick={async () => {
+                    try {
+                      const res = await api.post("/api/payments/trigger-reminder", null, { params: { userId, shift } });
+                      if (res.data?.success) alert("Test reminder triggered. Email will be sent if unpaid customers exist.");
+                      else alert(res.data?.error || "Failed to trigger test reminder");
+                    } catch (err) {
+                      const message = err?.response?.data?.error || "Failed to trigger test reminder";
+                      alert(message);
+                    }
+                  }}
+                >
+                  Send Test Reminder
+                </Button>
               </Stack>
             )}
           </Stack>

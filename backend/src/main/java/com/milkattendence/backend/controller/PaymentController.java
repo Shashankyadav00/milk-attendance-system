@@ -24,6 +24,7 @@ import java.util.*;
 public class PaymentController {
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
+    private static final Logger logger = LoggerFactory.getLogger(PaymentController.class);
 
     private final PaymentRepository paymentRepository;
     private final CustomerRepository customerRepository;
@@ -165,6 +166,8 @@ public class PaymentController {
         LocalTime now = LocalTime.now(IST);
         LocalDate today = LocalDate.now(IST);
 
+        logger.info("Running checkReminders at {} (IST)", now);
+
         List<Customer> users = customerRepository.findAllWithRemindersEnabled();
 
         // Ensure we only send one reminder per (userId, shift) in a single run
@@ -175,7 +178,10 @@ public class PaymentController {
             if (u.getReminderTime() == null) continue;
 
             String userShiftKey = u.getUserId() + ":" + (u.getReminderShift() == null ? "Morning" : u.getReminderShift());
-            if (processed.contains(userShiftKey)) continue; // already processed this user's shift
+            if (processed.contains(userShiftKey)) {
+                logger.debug("Skipping already processed key {}", userShiftKey);
+                continue; // already processed this user's shift
+            }
 
             int interval = (u.getReminderIntervalDays() == null || u.getReminderIntervalDays() <= 0) ? 1 : u.getReminderIntervalDays();
 
@@ -187,6 +193,8 @@ public class PaymentController {
                 if (!today.isBefore(next)) eligibleByDate = true;
             }
 
+            logger.debug("Evaluating reminder for user={}, shift={}, reminderTime={}, lastSent={}, eligibleByDate={}", u.getUserId(), u.getReminderShift(), u.getReminderTime(), u.getLastReminderSent(), eligibleByDate);
+
             if (!eligibleByDate) continue;
 
             if (now.getHour() == u.getReminderTime().getHour()
@@ -194,11 +202,12 @@ public class PaymentController {
 
                 try {
                     sendUnpaidEmailInternal(u.getUserId(), u.getReminderShift());
-                    customerRepository.updateLastReminderSent(u.getUserId(), today);
+                    customerRepository.updateLastReminderSentForShift(u.getUserId(), u.getReminderShift(), today);
                     processed.add(userShiftKey);
+                    logger.info("Reminder sent for user={}, shift={}", u.getUserId(), u.getReminderShift());
                 } catch (Exception e) {
                     // Log and continue; do not stop the loop
-                    LoggerFactory.getLogger(PaymentController.class).error("Failed to send reminder email for user {}: {}", u.getUserId(), e.getMessage());
+                    logger.error("Failed to send reminder email for user {}: {}", u.getUserId(), e.getMessage());
                 }
             }
         }
@@ -215,7 +224,12 @@ public class PaymentController {
                             shift, today, userId
                     );
 
-            if (unpaid.isEmpty()) return;
+            if (unpaid.isEmpty()) {
+                logger.info("No unpaid customers for user={}, shift={} on {}", userId, shift, today);
+                return;
+            }
+
+            logger.info("Preparing unpaid email: user={}, shift={}, count={}", userId, shift, unpaid.size());
 
             StringBuilder html = new StringBuilder();
             html.append("<h3>Unpaid Customers — ").append(shift).append("</h3>");
@@ -257,6 +271,21 @@ public class PaymentController {
                     "Unpaid Customers (" + shift + ") - " + today,
                     html.toString()
             );
+    }
+
+    @PostMapping("/trigger-reminder")
+    public Map<String, Object> triggerReminder(
+            @RequestParam Long userId,
+            @RequestParam String shift
+    ) {
+        try {
+            sendUnpaidEmailInternal(userId, shift);
+            customerRepository.updateLastReminderSentForShift(userId, shift, LocalDate.now(IST));
+            return Map.of("success", true, "message", "Triggered reminder");
+        } catch (Exception e) {
+            logger.error("Manual trigger failed for user {} shift {}: {}", userId, shift, e.getMessage());
+            return Map.of("success", false, "error", e.getMessage());
+        }
     }
 
     /* ============================
