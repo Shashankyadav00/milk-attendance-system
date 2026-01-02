@@ -9,6 +9,7 @@ import com.sendgrid.helpers.mail.objects.Email;
 import com.sendgrid.helpers.mail.objects.Content;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,20 +28,43 @@ public class EmailService {
     @Value("${EMAIL_FROM:}")
     private String emailFrom;
 
+    @Value("${TEST_EMAIL_LOG:false}")
+    private boolean testEmailLog;
+
+    @Autowired
+    private com.milkattendence.backend.repository.NotificationRepository notificationRepository;
+
     public void sendHtmlEmail(String subject, String htmlContent) throws Exception {
+        // backward-compatible call: no userId/shift
+        sendHtmlEmail(subject, htmlContent, null, null);
+    }
+
+    public void sendHtmlEmail(String subject, String htmlContent, Long userId, String shift) throws Exception {
 
         String apiKey = sendgridApiKey != null && !sendgridApiKey.isBlank()
                 ? sendgridApiKey
                 : System.getenv("SENDGRID_API_KEY");
 
         if (apiKey == null || apiKey.isBlank()) {
-            logger.error("SENDGRID_API_KEY is missing");
-            throw new IllegalStateException("SENDGRID_API_KEY is missing");
+            String msg = "SENDGRID_API_KEY is missing";
+            logger.warn(msg);
+            if (testEmailLog) {
+                logger.warn("TEST_EMAIL_LOG is enabled — saving email as a notification instead of sending");
+                saveNotification(userId, shift, subject, htmlContent, "EMAIL");
+                return;
+            }
+            throw new IllegalStateException(msg);
         }
 
         if (adminEmail == null || adminEmail.isBlank()) {
-            logger.error("admin.email (ADMIN_EMAIL) is missing");
-            throw new IllegalStateException("admin.email (ADMIN_EMAIL) is missing");
+            String msg = "admin.email (ADMIN_EMAIL) is missing";
+            logger.warn(msg);
+            if (testEmailLog) {
+                logger.warn("TEST_EMAIL_LOG is enabled — saving email as a notification instead of sending");
+                saveNotification(userId, shift, subject, htmlContent, "EMAIL");
+                return;
+            }
+            throw new IllegalStateException(msg);
         }
 
         logger.info("Sending email to {} with subject={}", adminEmail, subject);
@@ -62,6 +86,16 @@ public class EmailService {
 
         if (response.getStatusCode() >= 400) {
             throw new RuntimeException("Failed to send email: " + response.getStatusCode() + " " + response.getBody());
+        }
+    }
+
+    private void saveNotification(Long userId, String shift, String subject, String body, String type) {
+        try {
+            com.milkattendence.backend.model.Notification n = new com.milkattendence.backend.model.Notification(userId, shift, subject, body, type, java.time.LocalDateTime.now());
+            notificationRepository.save(n);
+            logger.info("Saved notification id={} subject={}", n.getId(), subject);
+        } catch (Exception e) {
+            logger.error("Failed to save notification: {}", e.getMessage());
         }
     }
 

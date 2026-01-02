@@ -31,6 +31,7 @@ function PaymentSummary() {
   const [enabled, setEnabled] = useState(false);
   const [repeatDays, setRepeatDays] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     if (!userId) return;
@@ -38,6 +39,20 @@ function PaymentSummary() {
     loadPayments();
     loadReminderSettings();
   }, [shift, userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    loadNotifications();
+  }, [shift, userId]);
+
+  const loadNotifications = async () => {
+    try {
+      const res = await api.get('/api/notifications', { params: { userId, shift } });
+      setNotifications(res.data || []);
+    } catch {
+      setNotifications([]);
+    }
+  };
 
   /* ---------------- LOAD DATA ---------------- */
 
@@ -137,10 +152,15 @@ function PaymentSummary() {
 
   const sendUnpaidEmail = async () => {
     try {
-      await api.post("/api/payments/email/unpaid", null, {
+      const res = await api.post("/api/payments/email/unpaid", null, {
         params: { shift, userId },
       });
-      alert("Unpaid customers email sent to admin");
+      if (res.data?.success) {
+        alert("Unpaid customers email sent to admin");
+        await loadNotifications();
+      } else {
+        alert(res.data?.error || "Failed to send unpaid report");
+      }
     } catch (err) {
       const message = err?.response?.data?.error || "Failed to send unpaid report";
       alert(message);
@@ -229,8 +249,10 @@ function PaymentSummary() {
                   onClick={async () => {
                     try {
                       const res = await api.post("/api/payments/trigger-reminder", null, { params: { userId, shift } });
-                      if (res.data?.success) alert("Test reminder triggered. Email will be sent if unpaid customers exist.");
-                      else alert(res.data?.error || "Failed to trigger test reminder");
+                      if (res.data?.success) {
+                        alert("Test reminder triggered. Email will be sent if unpaid customers exist.");
+                        await loadNotifications();
+                      } else alert(res.data?.error || "Failed to trigger test reminder");
                     } catch (err) {
                       const message = err?.response?.data?.error || "Failed to trigger test reminder";
                       alert(message);
@@ -298,8 +320,25 @@ function PaymentSummary() {
           >
             Send Unpaid Report to Admin
           </Button>
+        </Box>
 
-
+        {/* NOTIFICATIONS */}
+        <Box mt={3}>
+          <Typography fontWeight={700} mb={1}>Recent Notifications</Typography>
+          <Paper sx={{ p: 2 }}>
+            {notifications.length === 0 ? (
+              <Typography color="text.secondary">No notifications yet.</Typography>
+            ) : (
+              <Stack spacing={1}>
+                {notifications.map((n) => (
+                  <Box key={n.id} sx={{ borderBottom: '1px solid #eee', pb: 1 }}>
+                    <Typography variant="subtitle2">{n.subject}</Typography>
+                    <Typography variant="caption" color="text.secondary">{new Date(n.dateSent).toLocaleString()}</Typography>
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </Paper>
         </Box>
       </Card>
     </Box>

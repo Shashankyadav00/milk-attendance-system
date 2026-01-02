@@ -278,7 +278,9 @@ public class PaymentController {
 
             emailService.sendHtmlEmail(
                     "Unpaid Customers (" + shift + ") - " + today,
-                    html.toString()
+                    html.toString(),
+                    userId,
+                    shift
             );
     }
 

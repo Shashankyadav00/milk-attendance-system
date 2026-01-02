@@ -43,11 +43,11 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- H2 IN-MEMORY DATABASE FOR TESTS -->
+        <!-- H2 IN-MEMORY DATABASE (runtime for local development) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- SENDGRID (API BASED EMAIL, NO SMTP) -->
