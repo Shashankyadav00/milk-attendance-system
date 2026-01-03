@@ -26,6 +26,7 @@ function PaymentSummary() {
 
   const [customers, setCustomers] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [unpaidRows, setUnpaidRows] = useState([]);
 
   const [time, setTime] = useState("08:00");
   const [enabled, setEnabled] = useState(false);
@@ -38,6 +39,7 @@ function PaymentSummary() {
     loadCustomers();
     loadPayments();
     loadReminderSettings();
+    loadUnpaidRows();
   }, [shift, userId]);
 
   useEffect(() => {
@@ -151,6 +153,7 @@ function PaymentSummary() {
             if (trigger.data?.success) {
               alert("Unpaid report sent to admin");
               await loadNotifications();
+              await loadUnpaidRows();
             } else {
               alert(trigger.data?.error || "Failed to send unpaid report automatically");
             }
@@ -172,6 +175,16 @@ function PaymentSummary() {
 
   /* ---------------- ADMIN EMAIL ---------------- */
 
+  const loadUnpaidRows = async () => {
+    try {
+      const res = await api.get('/api/payments/unpaid', { params: { userId, shift } });
+      if (res.data?.success) setUnpaidRows(res.data.rows || []);
+      else setUnpaidRows([]);
+    } catch {
+      setUnpaidRows([]);
+    }
+  };
+
   const sendUnpaidEmail = async () => {
     try {
       const res = await api.post("/api/payments/email/unpaid", null, {
@@ -180,6 +193,7 @@ function PaymentSummary() {
       if (res.data?.success) {
         alert("Unpaid customers email sent to admin");
         await loadNotifications();
+        await loadUnpaidRows();
       } else {
         alert(res.data?.error || "Failed to send unpaid report");
       }
@@ -283,6 +297,55 @@ function PaymentSummary() {
                 >
                   Send Test Reminder
                 </Button>
+
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={async () => {
+                    // download unpaid report as HTML
+                    try {
+                      const res = await api.get('/api/payments/unpaid', { params: { userId, shift } });
+                      if (!res.data?.success) {
+                        alert(res.data?.error || 'No unpaid customers');
+                        return;
+                      }
+
+                      const rows = res.data.rows || [];
+                      if (rows.length === 0) {
+                        alert('No unpaid customers');
+                        return;
+                      }
+
+                      const css = `table{border-collapse:collapse;} th,td{border:1px solid #ccc;padding:6px 8px}`;
+                      const htmlRows = rows.map(r => `
+                        <tr>
+                          <td>${r.customerName}</td>
+                          <td>Unpaid</td>
+                          <td>₹${(r.rate||0).toFixed(2)}</td>
+                          <td>₹${(r.amount||0).toFixed(2)}</td>
+                        </tr>
+                      `).join('\n');
+
+                      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body>
+                        <h3>Unpaid Customers — ${shift}</h3>
+                        <table><thead><tr><th>Customer</th><th>Status</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${htmlRows}</tbody></table>
+                        </body></html>`;
+
+                      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `Unpaid_${shift}_${new Date().toISOString().slice(0,10)}.html`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+
+                    } catch (err) {
+                      alert('Failed to download unpaid report');
+                    }
+                  }}
+                >
+                  Download Unpaid PDF
+                </Button>
               </Stack>
             )}
           </Stack>
@@ -296,18 +359,18 @@ function PaymentSummary() {
                 <TableRow>
                   <TableCell><b>Customer</b></TableCell>
                   <TableCell align="center"><b>Status</b></TableCell>
-                  <TableCell align="center"><b>Action</b></TableCell>
+                  <TableCell align="center"><b>Rate</b></TableCell>
+                  <TableCell align="center"><b>Amount</b></TableCell>
                 </TableRow>
               </TableHead>
 
               <TableBody>
-                {customers.map((c) => {
-                  const name = c.fullName || c.nickname;
-                  const row = getPaymentRow(name);
-                  const paid = row ? row.paid : false;
+                {unpaidRows.map((r, idx) => {
+                  const name = r.customerName;
+                  const paid = false;
 
                   return (
-                    <TableRow key={c.id}>
+                    <TableRow key={idx}>
                       <TableCell>{name}</TableCell>
 
                       <TableCell align="center">
@@ -315,16 +378,22 @@ function PaymentSummary() {
                           size="small"
                           label={paid ? "Paid" : "Unpaid"}
                           color={paid ? "success" : "error"}
+                          onClick={async () => {
+                            // mark as paid
+                            try {
+                              await api.post('/api/payments', { customerName: name, shift, paid: true, userId });
+                              await loadUnpaidRows();
+                              await loadPayments();
+                            } catch {
+                              alert('Failed to mark as paid');
+                            }
+                          }}
+                          sx={{ cursor: 'pointer' }}
                         />
                       </TableCell>
 
-                      <TableCell align="center">
-                        <Switch
-                          checked={paid}
-                          onChange={() => handlePaymentToggle(name)}
-                          color="success"
-                        />
-                      </TableCell>
+                      <TableCell align="center">₹{r.rate?.toFixed(2) || '0.00'}</TableCell>
+                      <TableCell align="center">₹{(r.amount || 0).toFixed(2)}</TableCell>
                     </TableRow>
                   );
                 })}

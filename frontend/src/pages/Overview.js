@@ -18,6 +18,7 @@ import {
   ButtonGroup,
   Stack,
   Chip,
+  Switch,
 } from "@mui/material";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
@@ -217,6 +218,10 @@ function Overview() {
                 <TableCell align="center" sx={{ minWidth: 110 }}>
                   Amount
                 </TableCell>
+
+                <TableCell align="center" sx={{ minWidth: 110 }}>
+                  Status
+                </TableCell>
               </TableRow>
             </TableHead>
 
@@ -263,6 +268,29 @@ function Overview() {
 
                   <TableCell align="center">
                     ₹{(totalAmount[c.id] || 0).toFixed(2)}
+                  </TableCell>
+
+                  <TableCell align="center">
+                    {/* Status toggle: checked if paid today */}
+                    <Switch
+                      checked={Boolean(data.paymentsToday && data.paymentsToday[(c.fullName || c.nickname || "").trim().toLowerCase()])}
+                      onChange={async () => {
+                        const name = (c.fullName || c.nickname || "");
+                        const paid = Boolean(data.paymentsToday && data.paymentsToday[name.trim().toLowerCase()]);
+                        try {
+                          await api.post('/api/payments', {
+                            customerName: name,
+                            shift,
+                            paid: !paid,
+                            userId: Number(userId),
+                          });
+                          await loadOverview();
+                        } catch (err) {
+                          alert('Failed to update payment status');
+                        }
+                      }}
+                      color="success"
+                    />
                   </TableCell>
                 </TableRow>
               ))}

@@ -310,6 +310,48 @@ public class PaymentController {
     }
 
     /* ============================
+       GET UNPAID (JSON FOR UI / PDF)
+       ============================ */
+    @GetMapping("/unpaid")
+    public Map<String, Object> getUnpaidReport(
+            @RequestParam Long userId,
+            @RequestParam String shift
+    ) {
+        Map<String, Object> resp = new HashMap<>();
+
+        try {
+            LocalDate today = LocalDate.now(IST);
+
+            List<Payment> unpaid = paymentRepository.findByShiftAndPaidFalseAndDateAndUserId(shift, today, userId);
+
+            List<Map<String, Object>> rows = new ArrayList<>();
+
+            for (Payment p : unpaid) {
+                Double litres = milkEntryRepository.getTotalLitresForCustomer(p.getCustomerName(), p.getShift(), p.getUserId());
+                double rate = customerRepository
+                        .findCustomerByNameForUser(p.getUserId(), p.getShift(), p.getCustomerName())
+                        .map(Customer::getPricePerLitre)
+                        .orElse(0.0);
+
+                Map<String, Object> r = new HashMap<>();
+                r.put("customerName", p.getCustomerName());
+                r.put("litres", litres);
+                r.put("rate", rate);
+                r.put("amount", litres * rate);
+                rows.add(r);
+            }
+
+            resp.put("success", true);
+            resp.put("rows", rows);
+        } catch (Exception e) {
+            resp.put("success", false);
+            resp.put("error", e.getMessage());
+        }
+
+        return resp;
+    }
+
+    /* ============================
        MANUAL EMAIL TRIGGER
        ============================ */
     @PostMapping("/email/unpaid")

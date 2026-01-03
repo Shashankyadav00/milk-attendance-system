@@ -4,10 +4,12 @@ import com.milkattendence.backend.model.Customer;
 import com.milkattendence.backend.model.MilkEntry;
 import com.milkattendence.backend.repository.CustomerRepository;
 import com.milkattendence.backend.repository.MilkEntryRepository;
+import com.milkattendence.backend.repository.PaymentRepository;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.*;
 
 @RestController
@@ -17,13 +19,16 @@ public class OverviewController {
 
     private final MilkEntryRepository milkEntryRepo;
     private final CustomerRepository customerRepo;
+    private final PaymentRepository paymentRepo;
 
     public OverviewController(
             MilkEntryRepository milkEntryRepo,
-            CustomerRepository customerRepo
+            CustomerRepository customerRepo,
+            PaymentRepository paymentRepo
     ) {
         this.milkEntryRepo = milkEntryRepo;
         this.customerRepo = customerRepo;
+        this.paymentRepo = paymentRepo;
     }
 
     @GetMapping
@@ -139,6 +144,19 @@ public class OverviewController {
         response.put("totalAmountPerCustomer", totalAmountPerCustomer);
         response.put("totalPerDay", totalPerDay);
         response.put("grandTotalAmount", grandTotalAmount);
+
+        // Today's payments (to know if a customer is marked paid today)
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+        List<com.milkattendence.backend.model.Payment> todaysPayments =
+                paymentRepo.findByShiftAndDateAndUserId(shift, today, userId);
+
+        Map<String, Boolean> paymentsToday = new HashMap<>();
+        for (com.milkattendence.backend.model.Payment p : todaysPayments) {
+            if (p.getCustomerName() == null) continue;
+            paymentsToday.put(p.getCustomerName().trim().toLowerCase(), p.isPaid());
+        }
+
+        response.put("paymentsToday", paymentsToday);
 
         return response;
     }
