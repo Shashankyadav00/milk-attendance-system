@@ -72,6 +72,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- FLYWAY DB MIGRATION -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

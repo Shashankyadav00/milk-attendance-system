@@ -73,36 +73,54 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     @Transactional
     @Query("""
         UPDATE Customer c
-        SET c.lastReminderSent = :date
+        SET c.lastReminderSentAt = :dateTime
         WHERE c.userId = :userId
     """)
     void updateLastReminderSent(
             @Param("userId") Long userId,
-            @Param("date") LocalDate date
+            @Param("dateTime") java.time.LocalDateTime dateTime
     );
 
     @Modifying
     @Transactional
     @Query("""
         UPDATE Customer c
-        SET c.lastReminderSent = :date
+        SET c.lastReminderSentAt = :dateTime
         WHERE c.userId = :userId AND c.reminderShift = :shift
     """)
     void updateLastReminderSentForShift(
             @Param("userId") Long userId,
             @Param("shift") String shift,
-            @Param("date") LocalDate date
+            @Param("dateTime") java.time.LocalDateTime dateTime
     );
 
     @Modifying
     @Transactional
     @Query("""
         UPDATE Customer c
-        SET c.lastReminderSent = NULL
+        SET c.lastReminderSentAt = NULL
         WHERE c.userId = :userId AND c.reminderShift = :shift
     """)
     void clearLastReminderSentForShift(
             @Param("userId") Long userId,
             @Param("shift") String shift
+    );
+
+    // Atomically claim a reminder for a specific user/shift. This will set lastReminderSentAt to
+    // :now only if there is no existing timestamp for the same scheduled slot (threshold).
+    // Returns number of rows updated (1 if claim succeeded, 0 if another instance already claimed it).
+    @Modifying
+    @Transactional
+    @Query("""
+        UPDATE Customer c
+        SET c.lastReminderSentAt = :now
+        WHERE c.userId = :userId AND c.reminderShift = :shift
+          AND (c.lastReminderSentAt IS NULL OR c.lastReminderSentAt < :threshold)
+    """)
+    int claimReminderForShift(
+            @Param("userId") Long userId,
+            @Param("shift") String shift,
+            @Param("now") java.time.LocalDateTime now,
+            @Param("threshold") java.time.LocalDateTime threshold
     );
 }

@@ -34,7 +34,9 @@ public class Customer {
     // How often (in days) reminders should repeat. Default is 1 (daily).
     private Integer reminderIntervalDays = 1;
 
-    private LocalDate lastReminderSent;
+    // Timestamp when the last reminder was sent for this customer/shift.
+    // Stored as LocalDateTime to allow precise checks and to avoid duplicates across instances.
+    private java.time.LocalDateTime lastReminderSentAt; 
 
     // ==========================
     // CONSTRUCTORS
@@ -135,11 +137,11 @@ public class Customer {
         this.reminderIntervalDays = reminderIntervalDays;
     }
 
-    public LocalDate getLastReminderSent() {
-        return lastReminderSent;
+    public java.time.LocalDateTime getLastReminderSentAt() {
+        return lastReminderSentAt;
     }
 
-    public void setLastReminderSent(LocalDate lastReminderSent) {
-        this.lastReminderSent = lastReminderSent;
+    public void setLastReminderSentAt(java.time.LocalDateTime lastReminderSentAt) {
+        this.lastReminderSentAt = lastReminderSentAt;
     }
 }

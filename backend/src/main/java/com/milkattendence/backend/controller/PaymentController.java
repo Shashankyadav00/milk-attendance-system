@@ -14,9 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.*; 
 
 @RestController
 @RequestMapping("/api/payments")
@@ -172,7 +173,7 @@ public class PaymentController {
     @org.springframework.scheduling.annotation.Scheduled(cron = "0 * * * * *") // run at the top of every minute
     public void checkReminders() {
 
-        LocalTime now = LocalTime.now(IST);
+        LocalTime now = LocalTime.now(IST).withSecond(0);
         LocalDate today = LocalDate.now(IST);
 
         logger.info("Running checkReminders at {} (IST)", now);
@@ -195,27 +196,36 @@ public class PaymentController {
             int interval = (u.getReminderIntervalDays() == null || u.getReminderIntervalDays() <= 0) ? 1 : u.getReminderIntervalDays();
 
             boolean eligibleByDate = false;
-            if (u.getLastReminderSent() == null) {
+            if (u.getLastReminderSentAt() == null) {
                 eligibleByDate = true;
             } else {
-                LocalDate next = u.getLastReminderSent().plusDays(interval);
+                LocalDate next = u.getLastReminderSentAt().toLocalDate().plusDays(interval);
                 if (!today.isBefore(next)) eligibleByDate = true;
             }
 
-            logger.debug("Evaluating reminder for user={}, shift={}, reminderTime={}, lastSent={}, eligibleByDate={}", u.getUserId(), u.getReminderShift(), u.getReminderTime(), u.getLastReminderSent(), eligibleByDate);
+            logger.debug("Evaluating reminder for user={}, shift={}, reminderTime={}, lastSent={}, eligibleByDate={}", u.getUserId(), u.getReminderShift(), u.getReminderTime(), u.getLastReminderSentAt(), eligibleByDate);
 
             if (!eligibleByDate) continue;
 
             if (now.getHour() == u.getReminderTime().getHour()
                     && now.getMinute() == u.getReminderTime().getMinute()) {
 
+                // Build scheduled datetime at minute precision and attempt an atomic claim
+                LocalDateTime scheduledDateTime = LocalDateTime.of(today, u.getReminderTime()).withSecond(0);
+                LocalDateTime nowDateTime = LocalDateTime.now(IST);
+
+                int claimed = customerRepository.claimReminderForShift(u.getUserId(), u.getReminderShift(), nowDateTime, scheduledDateTime);
+                if (claimed == 0) {
+                    logger.debug("Reminder already claimed by another instance for user={}, shift={}", u.getUserId(), u.getReminderShift());
+                    continue;
+                }
+
                 try {
                     sendUnpaidEmailInternal(u.getUserId(), u.getReminderShift());
-                    customerRepository.updateLastReminderSentForShift(u.getUserId(), u.getReminderShift(), today);
                     processed.add(userShiftKey);
                     logger.info("Reminder sent for user={}, shift={}", u.getUserId(), u.getReminderShift());
                 } catch (Exception e) {
-                    // Log and continue; do not stop the loop
+                    // If sending failed, claim remains set; we log and continue
                     logger.error("Failed to send reminder email for user {}: {}", u.getUserId(), e.getMessage());
                 }
             }
@@ -291,7 +301,7 @@ public class PaymentController {
     ) {
         try {
             sendUnpaidEmailInternal(userId, shift);
-            customerRepository.updateLastReminderSentForShift(userId, shift, LocalDate.now(IST));
+            customerRepository.updateLastReminderSentForShift(userId, shift, LocalDateTime.now(IST));
             return Map.of("success", true, "message", "Triggered reminder");
         } catch (Exception e) {
             logger.error("Manual trigger failed for user {} shift {}: {}", userId, shift, e.getMessage());
