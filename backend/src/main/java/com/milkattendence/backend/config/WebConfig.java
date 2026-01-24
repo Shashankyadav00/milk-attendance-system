@@ -16,7 +16,7 @@ public class WebConfig {
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {
             @Override
-            public void addCorsMappings(CorsRegistry registry) {
+            public void addCorsMappings(@org.springframework.lang.NonNull CorsRegistry registry) {
                 String[] allowed = (frontendUrl != null && !frontendUrl.isBlank())
                         ? new String[]{"http://localhost:3000", frontendUrl}
                         : new String[]{"http://localhost:3000"};

@@ -4,7 +4,6 @@ import com.milkattendence.backend.model.User;
 import com.milkattendence.backend.repository.UserRepository;
 import com.milkattendence.backend.service.EmailService;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -19,7 +18,6 @@ public class AuthController {
     private final UserRepository userRepository;
     private final EmailService emailService;
 
-    @Autowired
     public AuthController(UserRepository userRepository, EmailService emailService) {
         this.userRepository = userRepository;
         this.emailService = emailService;

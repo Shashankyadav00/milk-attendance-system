@@ -7,7 +7,6 @@ import com.milkattendence.backend.repository.MilkEntryRepository;
 import com.milkattendence.backend.repository.PaymentRepository;
 import com.milkattendence.backend.service.EmailService;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
@@ -32,7 +31,6 @@ public class PaymentController {
     private final MilkEntryRepository milkEntryRepository;
     private final EmailService emailService;
 
-    @Autowired
     public PaymentController(
             PaymentRepository paymentRepository,
             CustomerRepository customerRepository,

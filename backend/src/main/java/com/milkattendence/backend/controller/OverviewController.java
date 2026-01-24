@@ -117,11 +117,11 @@ public class OverviewController {
                 double amount = litres * price;
 
                 totalLitresPerCustomer.merge(
-                        c.getId(), litres, Double::sum
+                        c.getId(), litres, (old, val) -> old + val
                 );
 
                 totalAmountPerCustomer.merge(
-                        c.getId(), amount, Double::sum
+                        c.getId(), amount, (old, val) -> old + val
                 );
 
                 dayTotal += amount;

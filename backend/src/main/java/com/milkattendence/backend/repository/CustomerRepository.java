@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -27,19 +27,22 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     // FIND CUSTOMER BY NAME (FULLNAME / NICKNAME)
     // ==========================
     @Query("""
-        SELECT c FROM Customer c
-        WHERE c.userId = :userId
-          AND c.shift = :shift
-          AND (
-               LOWER(TRIM(c.fullName)) = LOWER(TRIM(:name))
-            OR LOWER(TRIM(c.nickname)) = LOWER(TRIM(:name))
-          )
+            SELECT c FROM Customer c 
+            WHERE (c.fullName LIKE CONCAT('%', :name, '%') OR c.nickname LIKE CONCAT('%', :name, '%'))
     """)
-    Optional<Customer> findCustomerByNameForUser(
-            @Param("userId") Long userId,
-            @Param("shift") String shift,
-            @Param("name") String name
-    );
+    List<Customer> findByNameContaining(@Param("name") String name);
+
+    // ==========================
+    // FIND CUSTOMER BY NAME FOR USER
+    // ==========================
+    @Query("""
+            SELECT c FROM Customer c 
+            WHERE c.userId = :userId AND c.shift = :shift 
+            AND (c.fullName LIKE CONCAT('%', :name, '%') OR c.nickname LIKE CONCAT('%', :name, '%'))
+    """)
+    Optional<Customer> findCustomerByNameForUser(@Param("userId") Long userId,
+                                                 @Param("shift") String shift,
+                                                 @Param("name") String name);
 
     // ==========================
     // 🔔 REMINDER CONFIGURATION
@@ -47,80 +50,84 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     @Modifying
     @Transactional
     @Query("""
-        UPDATE Customer c
-        SET c.reminderEnabled = :enabled,
-            c.reminderTime = :time,
-            c.reminderShift = :shift,
+            UPDATE Customer c SET c.reminderEnabled = :enabled, 
+            c.reminderTime = :reminderTime, c.reminderShift = :shift,
             c.reminderIntervalDays = :intervalDays
-        WHERE c.userId = :userId
+            WHERE c.userId = :userId
     """)
-    void updateReminderSettings(
-            @Param("userId") Long userId,
-            @Param("enabled") boolean enabled,
-            @Param("time") LocalTime time,
-            @Param("shift") String shift,
-            @Param("intervalDays") Integer intervalDays
-    );
+    int updateReminderSettings(@Param("userId") Long userId,
+                               @Param("enabled") Boolean enabled,
+                               @Param("reminderTime") LocalTime reminderTime,
+                               @Param("shift") String shift,
+                               @Param("intervalDays") Integer intervalDays);
 
+    // ==========================
+    // GET ALL CUSTOMERS WITH REMINDERS ENABLED
+    // ==========================
     @Query("""
-        SELECT c FROM Customer c
-        WHERE c.reminderEnabled = true
-          AND c.reminderTime IS NOT NULL
+            SELECT c FROM Customer c 
+            WHERE c.reminderEnabled = true AND c.reminderTime IS NOT NULL
     """)
     List<Customer> findAllWithRemindersEnabled();
 
+    // ==========================
+    // CLEAR LAST REMINDER SENT FOR SHIFT
+    // ==========================
     @Modifying
     @Transactional
     @Query("""
-        UPDATE Customer c
-        SET c.lastReminderSentAt = :dateTime
-        WHERE c.userId = :userId
+            UPDATE Customer c SET c.lastReminderSentAt = NULL
+            WHERE c.userId = :userId AND c.reminderShift = :shift
     """)
-    void updateLastReminderSent(
-            @Param("userId") Long userId,
-            @Param("dateTime") java.time.LocalDateTime dateTime
-    );
+    int clearLastReminderSentForShift(@Param("userId") Long userId,
+                                      @Param("shift") String shift);
 
+    // ==========================
+    // CLAIM REMINDER FOR SHIFT
+    // ==========================
     @Modifying
     @Transactional
     @Query("""
-        UPDATE Customer c
-        SET c.lastReminderSentAt = :dateTime
-        WHERE c.userId = :userId AND c.reminderShift = :shift
+            UPDATE Customer c SET c.lastReminderSentAt = :now
+            WHERE c.userId = :userId AND c.reminderShift = :shift 
+            AND (c.lastReminderSentAt IS NULL OR c.lastReminderSentAt < :threshold)
     """)
-    void updateLastReminderSentForShift(
-            @Param("userId") Long userId,
-            @Param("shift") String shift,
-            @Param("dateTime") java.time.LocalDateTime dateTime
-    );
+    int claimReminderForShift(@Param("userId") Long userId,
+                              @Param("shift") String shift,
+                              @Param("now") LocalDateTime now,
+                              @Param("threshold") LocalDateTime threshold);
 
-    @Modifying
-    @Transactional
+    // ==========================
+    // GET CUSTOMERS NEEDING REMINDERS
+    // ==========================
     @Query("""
-        UPDATE Customer c
-        SET c.lastReminderSentAt = NULL
-        WHERE c.userId = :userId AND c.reminderShift = :shift
+            SELECT c FROM Customer c 
+            WHERE c.reminderTime IS NOT NULL 
+            AND (c.lastReminderSentAt IS NULL OR c.lastReminderSentAt < :threshold)
     """)
-    void clearLastReminderSentForShift(
-            @Param("userId") Long userId,
-            @Param("shift") String shift
-    );
+    List<Customer> findCustomersNeedingReminders(@Param("threshold") LocalDateTime threshold);
 
-    // Atomically claim a reminder for a specific user/shift. This will set lastReminderSentAt to
-    // :now only if there is no existing timestamp for the same scheduled slot (threshold).
-    // Returns number of rows updated (1 if claim succeeded, 0 if another instance already claimed it).
+    // ==========================
+    // UPDATE LAST REMINDER SENT TIMESTAMP
+    // ==========================
     @Modifying
     @Transactional
     @Query("""
-        UPDATE Customer c
-        SET c.lastReminderSentAt = :now
-        WHERE c.userId = :userId AND c.reminderShift = :shift
-          AND (c.lastReminderSentAt IS NULL OR c.lastReminderSentAt < :threshold)
+            UPDATE Customer c SET c.lastReminderSentAt = :now
+            WHERE c.userId = :userId AND c.reminderShift = :shift
     """)
-    int claimReminderForShift(
-            @Param("userId") Long userId,
-            @Param("shift") String shift,
-            @Param("now") java.time.LocalDateTime now,
-            @Param("threshold") java.time.LocalDateTime threshold
-    );
+    int updateLastReminderSentForShift(@Param("userId") Long userId,
+                                       @Param("shift") String shift,
+                                       @Param("now") LocalDateTime now);
+
+    // ==========================
+    // UPDATE LAST REMINDER SENT TIMESTAMP BY ID
+    // ==========================
+    @Modifying
+    @Transactional
+    @Query("""
+            UPDATE Customer c SET c.lastReminderSentAt = CURRENT_TIMESTAMP
+            WHERE c.id = :id
+    """)
+    int updateLastReminderSentAt(@Param("id") Long id);
 }

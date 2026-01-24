@@ -72,7 +72,7 @@ public class MilkEntryController {
 
     @DeleteMapping("/{id}")
     public String deleteEntry(@PathVariable Long id) {
-        if (!repo.existsById(id)) {
+        if (id == null || !repo.existsById(id)) {
             return "Entry not found";
         }
         repo.deleteById(id);

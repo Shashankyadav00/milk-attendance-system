@@ -9,7 +9,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -68,9 +67,10 @@ public class CustomerController {
     // Includes updating the active status if passed in the request body.
     // ==========================================================
     @PutMapping("/{id}")
+    @SuppressWarnings("null")
     public Customer updateCustomer(@PathVariable Long id, @RequestBody Customer updated) {
 
-        Customer c = customerRepository.findById(id)
+        Customer c = customerRepository.findById((Long) id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Customer not found with ID: " + id));
 
@@ -89,9 +89,10 @@ public class CustomerController {
     // Sets 'active' to false instead of physical deletion.
     // ==========================================================
     @DeleteMapping("/{id}")
-    public void deleteCustomer(@PathVariable Long id) {
+    @SuppressWarnings("null")
+    public void deleteCustomer(@PathVariable @org.springframework.lang.NonNull Long id) {
         
-        Customer c = customerRepository.findById(id)
+        Customer c = customerRepository.findById((Long) id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Customer not found with ID: " + id));
 
