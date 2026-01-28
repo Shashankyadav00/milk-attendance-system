@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/milk-attendance-system/static/css/main.b05400db.css",
-    "main.js": "/milk-attendance-system/static/js/main.bf10c7b3.js",
+    "main.js": "/milk-attendance-system/static/js/main.a1982307.js",
     "index.html": "/milk-attendance-system/index.html",
     "main.b05400db.css.map": "/milk-attendance-system/static/css/main.b05400db.css.map",
-    "main.bf10c7b3.js.map": "/milk-attendance-system/static/js/main.bf10c7b3.js.map"
+    "main.a1982307.js.map": "/milk-attendance-system/static/js/main.a1982307.js.map"
   },
   "entrypoints": [
     "static/css/main.b05400db.css",
-    "static/js/main.bf10c7b3.js"
+    "static/js/main.a1982307.js"
   ]
 }
