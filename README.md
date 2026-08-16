@@ -39,7 +39,6 @@ Overall, this project demonstrates end-to-end full-stack development skills, inc
 ### Tools & Platforms
 
 * Git & GitHub
-* Render (deployment)
 
 ---
 
