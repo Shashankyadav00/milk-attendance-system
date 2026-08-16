@@ -2,7 +2,6 @@
 
 A full-stack web application designed to digitize and automate daily milk record management for small dairy businesses. This project replaces manual registers with a reliable, scalable, and easy-to-use system.
 
-🌐 **Live Demo (Frontend)**: [https://milk-attendance-frontend.onrender.com/](https://milk-attendance-frontend.onrender.com/)
 
 ---
 
